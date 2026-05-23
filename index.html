@@ -482,7 +482,7 @@ input[type="file"]{display:none}
           <button class="vbtn" id="vbtn-list"><i class="ti ti-list"></i></button>
           <button class="vbtn" id="vbtn-gallery"><i class="ti ti-layout-grid"></i></button>
         </div>
-        <button class="compose-btn" id="compose-btn"><i class="ti ti-pencil-plus"></i> 새 일기</button>
+        <button class="compose-btn" id="compose-btn"><i class="ti ti-pencil-plus"></i> 글쓰기</button>
       </div>
     </div>
 
@@ -515,7 +515,7 @@ input[type="file"]{display:none}
       <div id="day-list-tb">
         <button class="ed-btn" id="day-back"><i class="ti ti-arrow-left"></i></button>
         <span id="day-list-title" style="font-size:15px;font-weight:600;color:var(--tp);margin-left:8px;flex:1"></span>
-        <button class="compose-btn" id="day-compose-btn" style="font-size:12px;padding:5px 12px"><i class="ti ti-pencil-plus"></i> 새 일기</button>
+        <button class="compose-btn" id="day-compose-btn" style="font-size:12px;padding:5px 12px"><i class="ti ti-pencil-plus"></i> 글쓰기</button>
       </div>
       <div id="day-list-body"></div>
     </div>
@@ -660,6 +660,7 @@ input[type="file"]{display:none}
 // ── FIREBASE REALTIME DATABASE ─────────────────
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import{getDatabase,ref,push,set,update,remove,onValue,get}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import{getStorage,ref as storageRef,uploadBytes,getDownloadURL}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
 
 const fbApp=initializeApp({
   apiKey:'AIzaSyBuyDehEtVzuC3IhxpSh5NidtpRYbG_ihs',
@@ -671,6 +672,16 @@ const fbApp=initializeApp({
   appId:'1:88733190009:web:8320de21c7f8eb471311a8'
 });
 const db=getDatabase(fbApp);
+const storage=getStorage(fbApp);
+
+// 이미지 → Firebase Storage 업로드 후 URL 반환
+async function uploadImage(file){
+  const ext=file.type.split('/')[1]||'jpg';
+  const path='images/'+Date.now()+'_'+Math.random().toString(36).slice(2)+'.'+ext;
+  const sRef=storageRef(storage,path);
+  await uploadBytes(sRef,file);
+  return await getDownloadURL(sRef);
+}
 
 
 // RTDB 헬퍼
@@ -825,7 +836,11 @@ function setView(v){
 // ── SIDEBAR TAGS ──────────────────────────────
 // 펼쳐진 부모 태그 set
 const expandedTags=new Set();
-function entryCount(id){return entries.filter(e=>(e.tags||[]).includes(id)).length}
+function entryCount(id){
+  const t=TAGS.find(x=>x.id===id);
+  const allIds=t?[id,...(t.children||[]).map(c=>c.id)]:[id];
+  return entries.filter(e=>(e.tags||[]).some(tid=>allIds.includes(tid))).length;
+}
 
 // 인라인 색상 팔레트 렌더
 function makePalHtml(selIdx,prefix){
@@ -1482,7 +1497,6 @@ function renderBC(){
     const ds=el.dataset.ds;
     const de=entries.filter(e=>e.date===ds);
     if(de.length===0)openEd('new',{date:ds});
-    else if(de.length===1)openRead(de[0]);
     else openDayList(ds,de);
   });
 }
@@ -1647,13 +1661,16 @@ function getYoutubeId(url){
     const u=new URL(url);
     // youtu.be/ID
     if(u.hostname==='youtu.be')return u.pathname.slice(1).split('?')[0];
-    // youtube.com/watch?v=ID
     if(u.hostname.includes('youtube.com')){
+      // watch?v=ID
       const v=u.searchParams.get('v');
       if(v)return v;
-      // youtube.com/shorts/ID
-      const m=u.pathname.match(/\/shorts\/([^/?]+)/);
-      if(m)return m[1];
+      // /shorts/ID
+      const shorts=u.pathname.match(/\/shorts\/([^/?]+)/);
+      if(shorts)return shorts[1];
+      // /live/ID
+      const live=u.pathname.match(/\/live\/([^/?]+)/);
+      if(live)return live[1];
     }
   }catch(e){}
   return null;
@@ -1689,6 +1706,8 @@ function insertYoutube(ytId, add=true){
 
 async function insertLP(url,title,add=true){
   const body=$$('ed-body'),cont=$$('ed-content');
+  // 중복 삽입 방지
+  if(body&&body.querySelector(`.lp[data-url="${CSS.escape(url)}"]`))return;
 
   let dom=url;try{dom=new URL(url).hostname}catch{}
 
@@ -1900,9 +1919,14 @@ function bindTiptapToolbar(){
           e.preventDefault();
           const file=item.getAsFile();
           if(!file)continue;
-          const reader=new FileReader();
-          reader.onload=ev=>insertM({type:'image',src:ev.target.result});
-          reader.readAsDataURL(file);
+          (async()=>{
+            showLoading(true);
+            try{
+              const url=await uploadImage(file);
+              insertM({type:'image',src:url});
+            }catch(err){alert('업로드 실패: '+err.message);}
+            finally{showLoading(false);}
+          })();
           return;
         }
       }
@@ -1934,7 +1958,16 @@ function bindTiptapToolbar(){
 
 $$('ed-img').onclick=()=>$$('file-img').click();
 $$('ed-vid').onclick=()=>$$('file-vid').click();
-$$('file-img').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>insertM({type:'image',src:ev.target.result});r.readAsDataURL(f);e.target.value=''};
+$$('file-img').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  e.target.value='';
+  showLoading(true);
+  try{
+    const url=await uploadImage(f);
+    insertM({type:'image',src:url});
+  }catch(err){alert('업로드 실패: '+err.message);}
+  finally{showLoading(false);}
+};
 $$('file-vid').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>insertM({type:'video',src:ev.target.result});r.readAsDataURL(f);e.target.value=''};
 
 // 태그 선택 모달
@@ -2137,10 +2170,10 @@ $$('new-tag-add').onclick=()=>{const n=$$('new-tag-n').value.trim();if(!n)return
 $$('new-tag-n').onkeydown=e=>{if(e.key==='Enter')$$('new-tag-add').click()};
 
 // 뷰 버튼
-$$('vbtn-list').onclick=()=>setView('list');
+$$('vbtn-list').onclick=()=>{actTag=null;$$('main-title').textContent='전체';$$('mob-hdr-t').textContent='전체';setView('list');};
 $$('vbtn-cal').onclick=()=>setView('cal');
 $$('vbtn-gallery').onclick=()=>setView('gallery');
-$$('mvb-list').onclick=()=>setView('list');
+$$('mvb-list').onclick=()=>{actTag=null;$$('main-title').textContent='전체';$$('mob-hdr-t').textContent='전체';setView('list');};
 $$('mvb-cal').onclick=()=>setView('cal');
 $$('mvb-gallery').onclick=()=>setView('gallery');
 $$('mob-si').oninput=e=>{srchQ=e.target.value;renderMain()};
@@ -2157,7 +2190,7 @@ $$('sb-overlay').onclick=closeSB;
 $$('fab-compose').onclick=()=>{edEnt={id:null,title:'',date:tds(),tags:[],body:'',media:[]};readEnt=null;openEd('new',edEnt)};
 
 // 모바일 뷰 전환 (상단 토글)
-$$('mvb-list').onclick=()=>setView('list');
+$$('mvb-list').onclick=()=>{actTag=null;$$('main-title').textContent='전체';$$('mob-hdr-t').textContent='전체';setView('list');};
 $$('mvb-cal').onclick=()=>setView('cal');
 $$('mvb-gallery').onclick=()=>setView('gallery');
 
