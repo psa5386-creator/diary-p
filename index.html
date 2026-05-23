@@ -87,7 +87,10 @@ html,body{height:100%;font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans
 .no-entry{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--ts);gap:10px}
 .no-entry i{font-size:40px;opacity:.15}
 /* GALLERY VIEW */
-#gallery-view{flex:1;overflow-y:auto;background:var(--bs);display:none}
+#gallery-view{flex:1;display:none;flex-direction:column;overflow:hidden;background:var(--bs)}
+#gallery-filter-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--bp);border-bottom:1px solid var(--bd);flex-shrink:0}
+#gallery-filter-tag{font-size:13px;color:var(--ts);flex:1}
+#gallery-scroll{flex:1;overflow-y:auto}
 #gallery-grid{
   display:grid;
   grid-template-columns:repeat(5,1fr);
@@ -486,7 +489,13 @@ input[type="file"]{display:none}
       </div>
     </div>
 
-    <div id="gallery-view"></div>
+    <div id="gallery-view">
+      <div id="gallery-filter-bar">
+        <button id="gallery-filter-btn" style="background:none;border:none;cursor:pointer;color:var(--ts);font-size:18px;display:flex;align-items:center;padding:0"><i class="ti ti-filter"></i></button>
+        <span id="gallery-filter-tag">전체</span>
+      </div>
+      <div id="gallery-scroll"></div>
+    </div>
     <div id="list-view"></div>
 
     <div id="cal-view">
@@ -1420,37 +1429,52 @@ function filtered(){
     };
   });
 }
+let galleryTag=null; // 갤러리 필터 태그
+
 function renderGallery(){
-  const w=$$('gallery-view');
-  // 날짜순 전체 이미지 수집
+  const scroll=$$('gallery-scroll');
+  if(!scroll)return;
+
+  // 필터 바 태그명 업데이트
+  const filterLbl=$$('gallery-filter-tag');
+  if(filterLbl){
+    if(galleryTag){
+      const t=getTag(galleryTag);
+      filterLbl.textContent=t?t.label:'전체';
+      filterLbl.style.color='var(--ac)';
+    } else {
+      filterLbl.textContent='전체';
+      filterLbl.style.color='var(--ts)';
+    }
+  }
+
+  // 태그 필터링 (상위+하위 포함)
+  let filtered=entries;
+  if(galleryTag){
+    const parent=TAGS.find(t=>t.id===galleryTag);
+    const allIds=parent?[galleryTag,...(parent.children||[]).map(c=>c.id)]:[galleryTag];
+    filtered=entries.filter(e=>(e.tags||[]).some(tid=>allIds.includes(tid)));
+  }
+
+  // 날짜순 이미지 수집
   const imgs=[];
-  [...entries]
-    .sort((a,b)=>b.date.localeCompare(a.date))
-    .forEach(e=>{
-      // media 배열에서 이미지
-      (e.media||[]).forEach(m=>{
-        if(m.type==='image')imgs.push({src:m.src,entry:e});
-      });
-      // body 안의 <img> 태그
-      if(e.body){
-        const tmp=document.createElement('div');
-        tmp.innerHTML=e.body;
-        tmp.querySelectorAll('img').forEach(img=>{
-          imgs.push({src:img.src,entry:e});
-        });
-      }
-    });
+  [...filtered].sort((a,b)=>b.date.localeCompare(a.date)).forEach(e=>{
+    (e.media||[]).forEach(m=>{if(m.type==='image')imgs.push({src:m.src,entry:e});});
+    if(e.body){
+      const tmp=document.createElement('div');tmp.innerHTML=e.body;
+      tmp.querySelectorAll('img').forEach(img=>imgs.push({src:img.src,entry:e}));
+    }
+  });
 
   if(!imgs.length){
-    w.innerHTML='<div class="no-entry" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:var(--ts);gap:10px"><i class="ti ti-photo-off" style="font-size:40px;opacity:.2"></i><p>사진이 없습니다</p></div>';
+    scroll.innerHTML='<div class="no-entry" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:var(--ts);gap:10px"><i class="ti ti-photo-off" style="font-size:40px;opacity:.2"></i><p>사진이 없습니다</p></div>';
     return;
   }
 
-  // 5열 그리드
-  w.innerHTML='<div id="gallery-grid"></div>';
+  scroll.innerHTML='<div id="gallery-grid"></div>';
   const grid=$$('gallery-grid');
   imgs.forEach(({src,entry})=>{
-    if(!src||src.startsWith('blob:'))return; // blob URL 제외
+    if(!src||src.startsWith('blob:'))return;
     const cell=document.createElement('div');
     cell.className='gallery-cell';
     cell.style.backgroundImage=`url(${src})`;
@@ -2172,10 +2196,10 @@ $$('new-tag-n').onkeydown=e=>{if(e.key==='Enter')$$('new-tag-add').click()};
 // 뷰 버튼
 $$('vbtn-list').onclick=()=>{actTag=null;$$('main-title').textContent='전체';$$('mob-hdr-t').textContent='전체';setView('list');};
 $$('vbtn-cal').onclick=()=>setView('cal');
-$$('vbtn-gallery').onclick=()=>setView('gallery');
+$$('vbtn-gallery').onclick=()=>{galleryTag=null;setView('gallery');};
 $$('mvb-list').onclick=()=>{actTag=null;$$('main-title').textContent='전체';$$('mob-hdr-t').textContent='전체';setView('list');};
 $$('mvb-cal').onclick=()=>setView('cal');
-$$('mvb-gallery').onclick=()=>setView('gallery');
+$$('mvb-gallery').onclick=()=>{galleryTag=null;setView('gallery');};
 $$('mob-si').oninput=e=>{srchQ=e.target.value;renderMain()};
 // 데스크탑 검색 (사이드바 검색창 제거됨 - mob-si만 사용)
 
@@ -2189,10 +2213,27 @@ $$('sb-overlay').onclick=closeSB;
 // FAB 글쓰기 버튼
 $$('fab-compose').onclick=()=>{edEnt={id:null,title:'',date:tds(),tags:[],body:'',media:[]};readEnt=null;openEd('new',edEnt)};
 
+// 갤러리 필터 버튼
+$$('gallery-filter-btn').onclick=()=>{
+  // 기존 태그 모달을 갤러리 필터용으로 재사용
+  const _origOk=$$('tp-ok').onclick;
+  $$('tp-ok').onclick=()=>{
+    // 선택된 태그 중 첫 번째를 갤러리 필터로 사용
+    galleryTag=edTags.length?edTags[0]:null;
+    $$('m-tag').classList.remove('show');
+    $$('tp-ok').onclick=_origOk;
+    edTags=[];
+    renderGallery();
+  };
+  // 현재 갤러리 필터 태그를 선택 상태로 초기화
+  edTags=galleryTag?[galleryTag]:[];
+  openTagModal();
+};
+
 // 모바일 뷰 전환 (상단 토글)
 $$('mvb-list').onclick=()=>{actTag=null;$$('main-title').textContent='전체';$$('mob-hdr-t').textContent='전체';setView('list');};
 $$('mvb-cal').onclick=()=>setView('cal');
-$$('mvb-gallery').onclick=()=>setView('gallery');
+$$('mvb-gallery').onclick=()=>{galleryTag=null;setView('gallery');};
 
 // YM PICKER
 const MN=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
