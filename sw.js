@@ -1,7 +1,7 @@
 const CACHE = 'kirok-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
+  '/diary-p/',
+  '/diary-p/index.html',
 ];
 
 self.addEventListener('install', e => {
@@ -21,7 +21,6 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Firebase API 요청은 캐시 안 함
   if (e.request.url.includes('firebase') || e.request.url.includes('firebaseio')) return;
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
