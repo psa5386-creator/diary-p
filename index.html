@@ -2403,8 +2403,9 @@ get(ref(db,'meta/tags')).then(snap=>{
     try{
       TAGS=migrateTagColors(JSON.parse(snap.val()));
       dbSaveTags(TAGS);
-
       renderTags();
+      // TAGS 로드 후 달력 재렌더 (태그 도트 반영)
+      renderMain();
     }catch(e){}
   }
 }).catch(e=>console.warn('태그 로드 실패:',e));
