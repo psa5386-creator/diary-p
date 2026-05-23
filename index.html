@@ -1304,7 +1304,14 @@ function renderMain(){
 }
 function filtered(){
   return entries.filter(e=>{
-    if(actTag&&!(e.tags||[]).includes(actTag))return false;
+    if(actTag){
+      // 상위태그 선택 시 하위태그로 작성된 글도 포함
+      const parent=TAGS.find(t=>t.id===actTag);
+      const allIds=parent
+        ?[actTag,...(parent.children||[]).map(c=>c.id)]
+        :[actTag];
+      if(!(e.tags||[]).some(tid=>allIds.includes(tid)))return false;
+    }
     if(srchQ){const q=srchQ.toLowerCase();if(!e.title.toLowerCase().includes(q)&&!e.body.toLowerCase().includes(q))return false}
     return true;
   }).sort((a,b)=>b.date.localeCompare(a.date));
@@ -1881,29 +1888,37 @@ function openTagModal(){
   const cs=$$('tp-child-section');
   const clbl=$$('tp-child-label');
   cs.style.display='none';
+  let currentParent=null; // 현재 열린 부모 태그 추적
 
   function renderParents(){
     pl.innerHTML=TAGS.map(t=>{
       const tc=getTagColor(t.id);
-      const on=edTags.includes(t.id);
+      const childSelected=t.children&&t.children.some(c=>edTags.includes(c.id));
+      const on=edTags.includes(t.id)||childSelected;
       return `<button class="tp-btn${on?' on':''}" data-id="${t.id}" style="${on?'background:'+tc.bg+';color:'+tc.color+';border-color:'+tc.color+';':''}">${t.label}</button>`;
     }).join('');
     pl.querySelectorAll('.tp-btn').forEach(btn=>btn.onclick=()=>{
       const tid=btn.dataset.id;
       const t=TAGS.find(x=>x.id===tid);
       const tc=getTagColor(tid);
-      if(edTags.includes(tid)){
+      const childSelected=t&&t.children&&t.children.some(c=>edTags.includes(c.id));
+      const directSelected=edTags.includes(tid);
+
+      if(directSelected||childSelected){
+        // 해제
         edTags=edTags.filter(x=>x!==tid);
-        // 이 부모의 자식도 제거
         if(t&&t.children)t.children.forEach(c=>{edTags=edTags.filter(x=>x!==c.id)});
-        btn.classList.remove('on');btn.style.cssText='';
+        currentParent=null;
         cs.style.display='none';
+        renderParents();
       } else {
+        // 상위태그 추가
         edTags.push(tid);
-        btn.classList.add('on');btn.style.cssText='background:'+tc.bg+';color:'+tc.color+';border-color:'+tc.color;
-        // 하위태그가 있으면 자식 패널 열기
+        currentParent=t;
+        renderParents();
         if(t&&t.children&&t.children.length>0){
-          renderChildren(t);cs.style.display='block';
+          renderChildren(t);
+          cs.style.display='block';
         } else {
           cs.style.display='none';
         }
@@ -1912,7 +1927,7 @@ function openTagModal(){
   }
 
   function renderChildren(parent){
-    clbl.textContent=parent.label+' › 하위태그 선택 (선택 안 해도 됩니다)';
+    clbl.textContent=parent.label+' › 하위태그 선택';
     cl.innerHTML=parent.children.map(c=>{
       const tc=getTagColor(c.id);
       const on=edTags.includes(c.id);
@@ -1923,10 +1938,16 @@ function openTagModal(){
       const tc=getTagColor(cid);
       if(edTags.includes(cid)){
         edTags=edTags.filter(x=>x!==cid);
-        btn.classList.remove('on');btn.style.cssText='';
+        // 남은 하위 없으면 상위도 제거 안 함 — 상위는 유지
+        renderParents();
+        renderChildren(parent);
       } else {
+        // 하위 추가 시 상위 제거
+        edTags=edTags.filter(x=>x!==parent.id);
         edTags.push(cid);
-        btn.classList.add('on');btn.style.cssText='background:'+tc.bg+';color:'+tc.color+';border-color:'+tc.color;
+        renderParents();
+        renderChildren(parent);
+        cs.style.display='block';
       }
     });
   }
