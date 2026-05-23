@@ -1,6 +1,6 @@
 {
-  "name": "記錄",
-  "short_name": "記錄",
+  "name": "KNOW KNOW",
+  "short_name": "KNOW KNOW",
   "description": "나만의 일기 앱",
   "start_url": "/diary-p/index.html",
   "scope": "/diary-p/",
