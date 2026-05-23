@@ -18,7 +18,8 @@
   --bd:rgba(120,120,180,.12);--bm:rgba(120,120,180,.22);
   --rm:14px;--rl:20px;--sw:270px;
 }
-html,body{height:100%;font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-size:14px;background:var(--bs);color:var(--tp);-webkit-font-smoothing:antialiased}
+html,body{height:100%;font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;font-size:14px;background:var(--bs);color:var(--tp);-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none}
+#ed-content,#e-title,input,textarea{-webkit-user-select:text!important;user-select:text!important}
 #app{display:flex;height:100vh;overflow:hidden}
 /* SIDEBAR */
 #sidebar{width:var(--sw);min-width:var(--sw);background:var(--bp);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
@@ -82,6 +83,7 @@ html,body{height:100%;font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans
 .ec-prev *{font-size:inherit!important;color:inherit!important;font-weight:inherit!important;font-style:inherit!important;text-decoration:inherit!important;background:none!important;line-height:inherit!important}
 .ec-tags{display:flex;flex-wrap:wrap;gap:5px}
 .ec-tag{font-size:11px;padding:3px 10px;border-radius:100px;font-weight:600}
+.ecard-sel{outline:2px solid var(--ac)!important;background:var(--acl)!important}
 .no-entry{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--ts);gap:10px}
 .no-entry i{font-size:40px;opacity:.15}
 /* BIG CAL */
@@ -1078,23 +1080,33 @@ function renderTags(){
     // 폼 row 생성
     const formDiv=document.createElement('div');
     formDiv.className='tag-add-row';
-    formDiv.style.paddingLeft=type==='child'?'36px':'8px';
+    if(type==='child'){
+      formDiv.style.cssText='margin:3px 8px 3px 68px;display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:100px;background:var(--bs)';
+    } else {
+      formDiv.style.cssText='margin:3px 8px;display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:100px;background:var(--bs)';
+    }
 
     let selPalI=0;
     function buildForm(){
+      const palHtml=type==='root'
+        ?`<div class="tag-add-pal" style="display:flex;gap:3px;flex-shrink:0">`
+          +TPAL.map((p,i)=>`<span class="tag-pal-dot${i===selPalI?' sel':''}" data-i="${i}" style="background:${p.color}"></span>`).join('')
+          +`</div>`
+        :''; // 하위태그는 팔레트 없음 (상위 색상 사용)
       formDiv.innerHTML=
         `<input class="tag-add-inp" placeholder="태그 이름..." style="flex:1;min-width:0;font-size:13px;border:none;outline:none;background:transparent;color:var(--tp);font-family:inherit">`
-        +`<div class="tag-add-pal" style="display:flex;gap:3px;flex-shrink:0">`
-        +TPAL.map((p,i)=>`<span class="tag-pal-dot${i===selPalI?' sel':''}" data-i="${i}" style="background:${p.color}"></span>`).join('')
-        +`</div>`
+        +palHtml
         +`<button class="tag-confirm-btn ok-btn" title="완료"><i class="ti ti-check"></i></button>`
         +`<button class="tag-confirm-btn" style="color:var(--ts)" title="취소"><i class="ti ti-x"></i></button>`;
 
       formDiv.querySelectorAll('.tag-pal-dot').forEach(dot=>dot.onclick=ev=>{
         ev.stopPropagation();
+        const savedVal=formDiv.querySelector('.tag-add-inp').value;
         selPalI=parseInt(dot.dataset.i);
         buildForm();
-        formDiv.querySelector('.tag-add-inp').focus();
+        const newInp=formDiv.querySelector('.tag-add-inp');
+        newInp.value=savedVal;
+        newInp.focus();
       });
 
       const inp=formDiv.querySelector('.tag-add-inp');
@@ -1186,11 +1198,9 @@ function renderTags(){
 
     let selColor=c.color,selBg=c.bg;
     function buildEdit(){
-      lbl.innerHTML=`<div style="display:flex;flex-direction:column;gap:4px;width:100%">
-        <input class="tag-edit-inp" value="${c.label}" style="border:none;outline:none;background:transparent;font-size:12px;color:var(--tp);font-family:inherit;width:100%">
-        <div style="display:flex;gap:3px;flex-wrap:wrap">
-          ${TPAL.map((p,i)=>`<button class="tag-pal-pick" data-i="${i}" style="width:14px;height:14px;border-radius:50%;background:${p.color};border:${p.color===selColor?'2px solid var(--ac)':'1.5px solid transparent'};cursor:pointer;padding:0;flex-shrink:0"></button>`).join('')}
-        </div>
+      // 하위태그 수정: 이름만 수정 (색상은 상위태그와 동일하므로 팔레트 없음)
+      lbl.innerHTML=`<div style="display:flex;align-items:center;gap:4px;width:100%">
+        <input class="tag-edit-inp" value="${c.label}" style="border:none;outline:none;background:transparent;font-size:12px;color:var(--tp);font-family:inherit;flex:1;min-width:0">
       </div>`;
       const inp=lbl.querySelector('.tag-edit-inp');
       lbl.querySelectorAll('.tag-pal-pick').forEach(pb=>pb.onclick=ev=>{
@@ -1203,7 +1213,7 @@ function renderTags(){
       const save=()=>{
         const nl=inp.value.trim();
         if(nl)TAGS[ti].children[ci].label=nl;
-        TAGS[ti].children[ci].color=selColor;TAGS[ti].children[ci].bg=selBg;
+        // 색상은 상위태그 색상 유지 (변경 없음)
         renderTags();renderMain();
       };
       inp.onblur=()=>setTimeout(save,150);
@@ -1275,7 +1285,88 @@ function filtered(){
   const w=$$('list-view'),l=filtered();
   if(!l.length){w.innerHTML='<div class="no-entry"><i class="ti ti-notebook"></i><p>일기가 없습니다</p></div>';return}
   w.innerHTML=l.map(e=>'<div class="ecard" data-id="'+e.id+'"><div class="ec-top"><span class="ec-tit">'+(e.title||'(제목 없음)')+'</span><span class="ec-dt">'+fs(e.date)+'</span></div><div class="ec-prev">'+stripHtml(e.body||'')+'</div><div class="ec-tags">'+e.tags.map(tid=>{const t=getTag(tid);const tc=getTagColor(tid);return t?'<span class="ec-tag" style="background:'+tc.bg+';color:'+tc.color+'">'+t.label+'</span>':''}).join('')+'</div></div>').join('');
-  w.querySelectorAll('.ecard').forEach(el=>el.onclick=()=>{const e=entries.find(x=>x.id==el.dataset.id);if(e)openRead(e)});
+
+  let selectMode=false;
+  const selected=new Set();
+
+  function enterSelectMode(id){
+    selectMode=true;
+    selected.clear();
+    selected.add(id);
+    // 상단에 삭제 바 표시
+    let bar=$$('list-sel-bar');
+    if(!bar){
+      bar=document.createElement('div');
+      bar.id='list-sel-bar';
+      bar.style.cssText='position:fixed;top:0;left:0;right:0;z-index:700;background:var(--ac);color:#fff;display:flex;align-items:center;padding:12px 20px;gap:12px;font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,.15)';
+      bar.innerHTML='<button id="list-sel-cancel" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0;display:flex;align-items:center"><i class="ti ti-x"></i></button>'
+        +'<span id="list-sel-cnt" style="flex:1">1개 선택</span>'
+        +'<button id="list-sel-del" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0;display:flex;align-items:center"><i class="ti ti-trash"></i></button>';
+      document.body.appendChild(bar);
+      $$('list-sel-cancel').onclick=exitSelectMode;
+      $$('list-sel-del').onclick=async()=>{
+        if(!selected.size)return;
+        showConfirm(`선택한 일기 ${selected.size}개를 삭제할까요?`,async()=>{
+          showLoading(true);
+          try{
+            await Promise.all([...selected].map(id=>{
+              const e=entries.find(x=>x.id===id);
+              return e?dbDeleteEntry(e.key):Promise.resolve();
+            }));
+          }catch(e){alert('삭제 실패: '+e.message);}
+          finally{showLoading(false);exitSelectMode();}
+        });
+      };
+    }
+    bar.style.display='flex';
+    updateSelectBar();
+    renderSelectState();
+  }
+
+  function exitSelectMode(){
+    selectMode=false;
+    selected.clear();
+    const bar=$$('list-sel-bar');
+    if(bar)bar.style.display='none';
+    w.querySelectorAll('.ecard').forEach(el=>el.classList.remove('ecard-sel'));
+  }
+
+  function updateSelectBar(){
+    const cnt=$$('list-sel-cnt');
+    if(cnt)cnt.textContent=`${selected.size}개 선택`;
+  }
+
+  function renderSelectState(){
+    w.querySelectorAll('.ecard').forEach(el=>{
+      el.classList.toggle('ecard-sel',selected.has(el.dataset.id));
+    });
+  }
+
+  w.querySelectorAll('.ecard').forEach(el=>{
+    let pressTimer=null;
+
+    el.addEventListener('touchstart',()=>{
+      pressTimer=setTimeout(()=>{
+        if(!selectMode)enterSelectMode(el.dataset.id);
+        else{
+          selected.has(el.dataset.id)?selected.delete(el.dataset.id):selected.add(el.dataset.id);
+          updateSelectBar();renderSelectState();
+        }
+      },500);
+    },{passive:true});
+    el.addEventListener('touchend',()=>clearTimeout(pressTimer));
+    el.addEventListener('touchmove',()=>clearTimeout(pressTimer));
+
+    el.onclick=()=>{
+      if(selectMode){
+        selected.has(el.dataset.id)?selected.delete(el.dataset.id):selected.add(el.dataset.id);
+        updateSelectBar();renderSelectState();
+        if(selected.size===0)exitSelectMode();
+        return;
+      }
+      const e=entries.find(x=>x.id==el.dataset.id);if(e)openRead(e);
+    };
+  });
 }
 function renderBC(){
   $$('bc-lbl-txt').textContent=bcD.getFullYear()+'년 '+(bcD.getMonth()+1)+'월';
