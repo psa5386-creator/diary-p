@@ -1634,8 +1634,9 @@ function insertM(obj,add=true){
 
 
 async function insertLP(url,title,add=true){
-  const ec=$$('ed-content');
-  for(const el of ec.querySelectorAll('.lp')){if(el.dataset.url===url)return}
+  const body=$$('ed-body'),cont=$$('ed-content');
+  if(!body)return;
+  for(const el of body.querySelectorAll('.lp')){if(el.dataset.url===url)return}
 
   let dom=url;try{dom=new URL(url).hostname}catch{}
 
@@ -1649,15 +1650,8 @@ async function insertLP(url,title,add=true){
   rm.onclick=e=>{e.stopPropagation();if(edEnt)edEnt.media=edEnt.media.filter(m=>m.url!==url);div.remove()};
   div.prepend(rm);
 
-  // 커서 위치에 삽입
-  const sel=window.getSelection();
-  if(sel&&sel.rangeCount&&ec.contains(sel.anchorNode)){
-    const range=sel.getRangeAt(0);range.collapse(false);
-    range.insertNode(div);range.setStartAfter(div);range.collapse(true);
-    sel.removeAllRanges();sel.addRange(range);
-  } else {
-    ec.appendChild(div);
-  }
+  // ed-body 안 ed-content 앞에 삽입 (contenteditable 밖)
+  body.insertBefore(div, cont);
 
   // Microlink API 호출
   let meta={title:title||dom,description:'',image:'',domain:dom};
@@ -1846,7 +1840,7 @@ function bindTiptapToolbar(){
   $$('m-link').onclick=e=>{if(e.target===e.currentTarget)$$('m-link').classList.remove('show');};
 
   ec.addEventListener('paste',e=>{
-    // 이미지 붙여넣기: base64로 변환 후 삽입
+    // 이미지 붙여넣기
     const items=e.clipboardData?.items;
     if(items){
       for(const item of items){
@@ -1861,8 +1855,17 @@ function bindTiptapToolbar(){
         }
       }
     }
+    // 항상 plain text로만 처리 (서식 제거)
+    e.preventDefault();
     const t=(e.clipboardData||window.clipboardData)?.getData('text/plain')?.trim();
-    if(t&&isURL(t))insertLP(t,'',true);
+    if(!t)return;
+    if(isURL(t)){
+      // URL: 링크 카드만 삽입 (텍스트 삽입 안 함)
+      insertLP(t,'',true);
+    } else {
+      // 일반 텍스트: 서식 없이 그대로 삽입
+      document.execCommand('insertText',false,t);
+    }
   });
 }
 
