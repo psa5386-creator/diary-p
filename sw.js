@@ -1,13 +1,6 @@
-const CACHE = 'kirok-v1';
-const ASSETS = [
-  '/diary-p/',
-  '/diary-p/index.html',
-];
+const CACHE = 'kirok-v3';
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS))
-  );
   self.skipWaiting();
 });
 
@@ -22,7 +15,6 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.url.includes('firebase') || e.request.url.includes('firebaseio')) return;
-  e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
-  );
+  // 항상 네트워크 우선 — 캐시 안 함
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });
