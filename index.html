@@ -400,7 +400,7 @@ input[type="file"]{display:none}
 /* 월별 통계 차트 */
 #stats-sec{padding:14px 20px 10px;border-bottom:1px solid var(--bd)}
 #stats-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.stats-nav{background:none;border:none;cursor:pointer;color:var(--ts);font-size:16px;padding:4px 6px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .15s;width:33px;flex-shrink:0}
+.stats-nav{background:none;border:none;cursor:pointer;color:var(--ts);font-size:16px;padding:4px 6px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .15s;width:30px;min-width:30px;flex-shrink:0}
 .stats-nav:hover{background:var(--bs)}
 .stats-lbl{background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--tp);font-family:inherit;padding:3px 8px;border-radius:100px}
 .stats-lbl:hover{background:var(--bs)}
@@ -409,10 +409,10 @@ input[type="file"]{display:none}
 .stats-yr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 #stats-chart{display:flex;flex-direction:column;gap:8px;min-height:20px}
 .stats-row{display:flex;align-items:center;gap:8px}
-.stats-tag-name{font-size:11px;color:var(--ts);width:33px;flex-shrink:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:clip;max-width:33px}
+.stats-tag-name{font-size:11px;color:var(--ts);width:30px;min-width:30px;max-width:30px;flex-shrink:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:clip;display:inline-block}
 .stats-bar-wrap{flex:1;background:var(--bs);border-radius:100px;height:10px;overflow:hidden}
 .stats-bar{height:100%;border-radius:100px;transition:width .5s cubic-bezier(.4,0,.2,1)}
-.stats-count{font-size:11px;color:var(--ts);width:33px;flex-shrink:0;text-align:left;font-weight:600}
+.stats-count{font-size:11px;color:var(--ts);width:30px;min-width:30px;flex-shrink:0;text-align:left;font-weight:600}
 .stats-empty{font-size:11px;color:var(--ts);text-align:center;padding:6px 0;opacity:.5}
 </style>
 </head>
