@@ -409,10 +409,10 @@ input[type="file"]{display:none}
 .stats-yr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 #stats-chart{display:flex;flex-direction:column;gap:8px;min-height:20px}
 .stats-row{display:flex;align-items:center;gap:8px}
-.stats-tag-name{font-size:11px;color:var(--ts);width:30px;min-width:30px;max-width:30px;flex-shrink:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:clip;display:inline-block}
+.stats-tag-name{font-size:11px;color:var(--ts);width:30px;min-width:30px;max-width:30px;flex-shrink:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .stats-bar-wrap{flex:1;background:var(--bs);border-radius:100px;height:10px;overflow:hidden}
 .stats-bar{height:100%;border-radius:100px;transition:width .5s cubic-bezier(.4,0,.2,1)}
-.stats-count{font-size:11px;color:var(--ts);width:30px;min-width:30px;flex-shrink:0;text-align:left;font-weight:600}
+.stats-count{font-size:11px;color:var(--ts);width:30px;min-width:30px;max-width:30px;flex-shrink:0;text-align:left;font-weight:600;overflow:hidden}
 .stats-empty{font-size:11px;color:var(--ts);text-align:center;padding:6px 0;opacity:.5}
 </style>
 </head>
@@ -2308,7 +2308,7 @@ function renderStats(){
     const row=document.createElement('div');
     row.className='stats-row';
     row.innerHTML=`
-      <span class="stats-tag-name" title="${r.label}">${r.label.slice(0,3)}</span>
+      <span class="stats-tag-name" title="${r.label}">${r.label.length>2?r.label.slice(0,2)+"…":r.label}</span>
       <div class="stats-bar-wrap">
         <div class="stats-bar" style="width:0%;background:${r.color}"></div>
       </div>
