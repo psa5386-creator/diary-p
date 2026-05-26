@@ -679,7 +679,7 @@ input[type="file"]{display:none}
 // ── FIREBASE REALTIME DATABASE ─────────────────
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import{getDatabase,ref,push,set,update,remove,onValue,get}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
-import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,browserLocalPersistence,setPersistence}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import{getStorage,ref as storageRef,uploadBytes,getDownloadURL}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
 
 const fbApp=initializeApp({
@@ -2409,27 +2409,6 @@ function migrateTagColors(tags){
   return tags;
 }
 
-get(ref(db,'meta/tags')).then(snap=>{
-  if(snap.exists()){
-    try{
-      TAGS=migrateTagColors(JSON.parse(snap.val()));
-      dbSaveTags(TAGS);
-      renderTags();
-      // TAGS 로드 후 달력 재렌더 (태그 도트 반영)
-      renderMain();
-    }catch(e){}
-  }
-}).catch(e=>console.warn('태그 로드 실패:',e));
-
-// 2) entries 실시간 수신
-onValue(ref(db,'entries'),snap=>{
-  const val=snap.val()||{};
-  entries=Object.entries(val)
-    .map(([key,data])=>({...data,key,id:key,tags:data.tags||[],media:data.media||[]}))
-    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  renderMain();
-},err=>console.error('DB 연결 오류:',err));
-
 // 3) TAGS 변경 시 자동 저장 (편집 모드, 1초 debounce)
 let _tagsTimer=null;
 function saveTagsDebounced(){
@@ -2442,6 +2421,10 @@ renderTags=function(){_origRenderTags();if(tagEditMode)saveTagsDebounced();};
 // ── Firebase Auth ──────────────────────────────
 const auth=getAuth(fbApp);
 const provider=new GoogleAuthProvider();
+let _dbUnsubscribe=null;
+
+// 로그인 상태 영구 유지
+setPersistence(auth, browserLocalPersistence).catch(()=>{});
 
 $$('login-btn').onclick=()=>{
   signInWithPopup(auth,provider).catch(()=>{
@@ -2463,8 +2446,32 @@ onAuthStateChanged(auth,user=>{
     // 로그인됨 — 앱 표시
     $$('login-screen').style.display='none';
     $$('app').style.display='flex';
+
+    // 로그인 후 DB 초기화
+    get(ref(db,'meta/tags')).then(snap=>{
+      if(snap.exists()){
+        try{
+          TAGS=migrateTagColors(JSON.parse(snap.val()));
+          dbSaveTags(TAGS);
+          renderTags();
+          renderMain();
+        }catch(e){}
+      }
+    }).catch(e=>console.warn('태그 로드 실패:',e));
+
+    if(_dbUnsubscribe)_dbUnsubscribe();
+    _dbUnsubscribe=onValue(ref(db,'entries'),snap=>{
+      const val=snap.val()||{};
+      entries=Object.entries(val)
+        .map(([key,data])=>({...data,key,id:key,tags:data.tags||[],media:data.media||[]}))
+        .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      renderMain();
+    },err=>console.error('DB 연결 오류:',err));
+
   } else {
-    // 미로그인 — 로그인 화면 표시
+    // 로그아웃 — DB 구독 해제
+    if(_dbUnsubscribe){_dbUnsubscribe();_dbUnsubscribe=null;}
+    entries=[];
     $$('login-screen').style.display='flex';
     $$('app').style.display='none';
   }
