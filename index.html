@@ -407,7 +407,7 @@ input[type="file"]{display:none}
 #stats-picker{display:none;background:var(--bp);border:1px solid var(--bd);border-radius:var(--rl);padding:12px;margin-bottom:10px;box-shadow:0 4px 16px rgba(0,0,0,.1)}
 #stats-picker.open{display:block}
 .stats-yr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-#stats-chart{display:flex;flex-direction:column;gap:8px;min-height:20px}
+#stats-chart{display:flex;flex-direction:column;gap:4px;min-height:20px}
 .stats-row{display:grid;grid-template-columns:30px 1fr 30px;align-items:center;gap:8px}
 .stats-tag-name{font-size:11px;color:var(--ts);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:30px}
 .stats-bar-wrap{background:var(--bs);border-radius:100px;height:10px;overflow:hidden}
@@ -2307,7 +2307,7 @@ function renderStats(){
     const pct=Math.round((r.cnt/max)*100);
     const shortLabel=r.label.length>3?r.label.slice(0,2)+'…':r.label;
     const row=document.createElement('div');
-    row.style.cssText='display:grid;grid-template-columns:36px 1fr 36px;align-items:center;gap:6px;margin-bottom:6px';
+    row.style.cssText='display:grid;grid-template-columns:36px 1fr 36px;align-items:center;gap:6px';
     row.innerHTML=`
       <span style="font-size:11px;color:var(--ts);text-align:right;white-space:nowrap;overflow:hidden;display:block;width:36px" title="${r.label}">${shortLabel}</span>
       <div style="background:var(--bs);border-radius:100px;height:10px;overflow:hidden">
