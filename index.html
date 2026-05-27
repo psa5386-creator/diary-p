@@ -399,8 +399,8 @@ input[type="file"]{display:none}
 
 /* 월별 통계 차트 */
 #stats-sec{padding:14px 20px 10px;border-bottom:1px solid var(--bd)}
-#stats-header{display:grid;grid-template-columns:30px 1fr 30px;align-items:center;margin-bottom:10px}
-.stats-nav{background:none;border:none;cursor:pointer;color:var(--ts);font-size:16px;padding:4px 6px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .15s;width:30px;min-width:30px;flex-shrink:0}
+#stats-header{display:grid;grid-template-columns:36px 1fr 36px;align-items:center;margin-bottom:10px}
+.stats-nav{background:none;border:none;cursor:pointer;color:var(--ts);font-size:16px;padding:4px 6px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .15s;width:36px;min-width:36px;flex-shrink:0}
 .stats-nav:hover{background:var(--bs)}
 .stats-lbl{background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--tp);font-family:inherit;padding:3px 8px;border-radius:100px;text-align:center;width:100%}
 .stats-lbl:hover{background:var(--bs)}
@@ -2305,14 +2305,15 @@ function renderStats(){
 
   counts.forEach(r=>{
     const pct=Math.round((r.cnt/max)*100);
+    const shortLabel=r.label.length>3?r.label.slice(0,2)+'…':r.label;
     const row=document.createElement('div');
-    row.className='stats-row';
+    row.style.cssText='display:grid;grid-template-columns:36px 1fr 36px;align-items:center;gap:6px;margin-bottom:6px';
     row.innerHTML=`
-      <span class="stats-tag-name" title="${r.label}">${r.label.length>2?r.label.slice(0,2)+"…":r.label}</span>
-      <div class="stats-bar-wrap">
-        <div class="stats-bar" style="width:0%;background:${r.color}"></div>
+      <span style="font-size:11px;color:var(--ts);text-align:right;white-space:nowrap;overflow:hidden;display:block;width:36px" title="${r.label}">${shortLabel}</span>
+      <div style="background:var(--bs);border-radius:100px;height:10px;overflow:hidden">
+        <div class="stats-bar" style="width:0%;background:${r.color};height:100%;border-radius:100px;transition:width .5s cubic-bezier(.4,0,.2,1)"></div>
       </div>
-      <span class="stats-count">${r.cnt||''}</span>`;
+      <span style="font-size:11px;color:var(--ts);text-align:left;font-weight:600;white-space:nowrap;display:block;width:36px">${r.cnt||''}</span>`;
     chart.appendChild(row);
     // 애니메이션: 다음 프레임에서 너비 적용
     requestAnimationFrame(()=>{
@@ -2427,7 +2428,8 @@ let _dbUnsubscribe=null;
 setPersistence(auth, browserLocalPersistence).catch(()=>{});
 
 $$('login-btn').onclick=()=>{
-  signInWithPopup(auth,provider).catch(()=>{
+  signInWithPopup(auth, provider).catch(()=>{
+    $$('login-err').textContent='로그인 실패. 다시 시도해주세요.';
     $$('login-err').style.display='block';
   });
 };
